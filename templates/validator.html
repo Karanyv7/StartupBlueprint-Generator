@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Idea Validator{% endblock %}
+{% block page_title %}Idea Validator{% endblock %}
+
+{% block content %}
+<div class="tool-page-layout animate-fadeInUp">
+
+  <!-- Page Hero -->
+  <div class="tool-hero" style="--hero-color:#10b981">
+    <div class="tool-hero-icon"><i class="bi bi-patch-check-fill"></i></div>
+    <div class="tool-hero-text">
+      <h1>Idea Validator</h1>
+      <p>Evaluate your startup idea on innovation, feasibility, scalability, market potential, and more. Get a comprehensive score with actionable improvement recommendations.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Input Panel -->
+    <div class="col-lg-5">
+      <div class="card-custom h-100">
+        <div class="card-header-custom">
+          <div class="card-icon-wrap" style="--c:#10b981"><i class="bi bi-pencil-square"></i></div>
+          <div>
+            <h3 class="card-title-custom">Your Idea</h3>
+            <p class="card-subtitle-custom">Describe it in detail for best results</p>
+          </div>
+        </div>
+        <div class="card-body-custom">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Idea Description</label>
+            <textarea
+              id="ideaInput"
+              class="form-textarea-custom"
+              rows="8"
+              maxlength="4000"
+              placeholder="Describe your startup idea in detail. Include the problem you're solving, your target audience, how it works, and any unique aspects. The more context you provide, the better the validation results."
+            ></textarea>
+            <div class="form-meta">
+              <span id="ideaCharCount">0</span>/4000 characters
+            </div>
+          </div>
+
+          <div class="eval-dimensions mt-3">
+            <h6 class="mb-3"><i class="bi bi-list-check me-2"></i>Will Be Evaluated On:</h6>
+            <div class="dimension-tags">
+              <span class="dim-tag" style="--dt:#6366f1">Innovation</span>
+              <span class="dim-tag" style="--dt:#10b981">Feasibility</span>
+              <span class="dim-tag" style="--dt:#3b82f6">Scalability</span>
+              <span class="dim-tag" style="--dt:#f59e0b">Market Potential</span>
+              <span class="dim-tag" style="--dt:#ec4899">Technical Complexity</span>
+              <span class="dim-tag" style="--dt:#8b5cf6">Dev Timeline</span>
+              <span class="dim-tag" style="--dt:#06b6d4">Team Size</span>
+              <span class="dim-tag" style="--dt:#ef4444">Overall Score</span>
+            </div>
+          </div>
+
+          <button class="btn-primary-custom w-100 mt-4" id="validateBtn" onclick="validateIdea()">
+            <i class="bi bi-patch-check-fill me-2"></i>Validate My Idea
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="col-lg-7">
+      <!-- Empty State -->
+      <div class="empty-state-panel" id="validatorEmpty">
+        <div class="empty-icon"><i class="bi bi-patch-question"></i></div>
+        <h4>Validation Results</h4>
+        <p>Enter your idea and click "Validate" to see a comprehensive analysis with scores, strengths, challenges, and improvement recommendations.</p>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading-panel" id="validatorLoading" style="display:none">
+        <div class="loading-orb">
+          <div class="orb-ring ring-1"></div>
+          <div class="orb-ring ring-2"></div>
+          <div class="orb-core"><i class="bi bi-cpu-fill"></i></div>
+        </div>
+        <h4>Analyzing Your Idea...</h4>
+        <p>IBM watsonx.ai Granite is evaluating your idea across multiple dimensions.</p>
+        <div class="loading-steps" id="loadingSteps">
+          <div class="loading-step active">🔍 Parsing idea structure...</div>
+          <div class="loading-step">📊 Scoring innovation dimensions...</div>
+          <div class="loading-step">⚖️ Assessing market potential...</div>
+          <div class="loading-step">💡 Generating recommendations...</div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="validatorResults" style="display:none">
+        <div class="card-custom">
+          <div class="card-header-custom">
+            <div class="card-icon-wrap" style="--c:#10b981"><i class="bi bi-bar-chart-fill"></i></div>
+            <div>
+              <h3 class="card-title-custom">Validation Report</h3>
+              <p class="card-subtitle-custom" id="validatorTimestamp"></p>
+            </div>
+            <button class="btn-icon ms-auto" onclick="copyResult('validatorContent')" title="Copy report">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+          <div class="card-body-custom result-body" id="validatorContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const ideaInput = document.getElementById("ideaInput");
+  ideaInput.addEventListener("input", () => {
+    document.getElementById("ideaCharCount").textContent = ideaInput.value.length;
+  });
+
+  async function validateIdea() {
+    const idea = ideaInput.value.trim();
+    if (!idea) { showToast("Please describe your idea first.", "warning"); return; }
+
+    const btn = document.getElementById("validateBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Validating...';
+
+    document.getElementById("validatorEmpty").style.display = "none";
+    document.getElementById("validatorResults").style.display = "none";
+    document.getElementById("validatorLoading").style.display = "flex";
+
+    // Animate loading steps
+    const steps = document.querySelectorAll(".loading-step");
+    let stepIdx = 0;
+    const stepInterval = setInterval(() => {
+      steps.forEach(s => s.classList.remove("active"));
+      if (stepIdx < steps.length) { steps[stepIdx].classList.add("active"); stepIdx++; }
+      else clearInterval(stepInterval);
+    }, 1500);
+
+    try {
+      const res  = await fetch("/api/validate", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ idea }),
+      });
+      const data = await res.json();
+      clearInterval(stepInterval);
+      document.getElementById("validatorLoading").style.display = "none";
+
+      if (res.ok) {
+        document.getElementById("validatorContent").innerHTML = marked.parse(data.result);
+        document.getElementById("validatorTimestamp").textContent =
+          "Generated: " + new Date(data.timestamp).toLocaleString();
+        document.getElementById("validatorResults").style.display = "block";
+        showToast("Validation complete!", "success");
+      } else {
+        document.getElementById("validatorEmpty").style.display = "flex";
+        showToast(data.error || "Validation failed.", "error");
+      }
+    } catch (err) {
+      clearInterval(stepInterval);
+      document.getElementById("validatorLoading").style.display = "none";
+      document.getElementById("validatorEmpty").style.display = "flex";
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-patch-check-fill me-2"></i>Validate My Idea';
+    }
+  }
+</script>
+{% endblock %}

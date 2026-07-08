@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}404 Not Found{% endblock %}
+{% block page_title %}Not Found{% endblock %}
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height:60vh;text-align:center;">
+  <div style="font-size:5rem;margin-bottom:1rem;">🔍</div>
+  <h1 style="font-size:4rem;font-weight:800;color:var(--accent)">404</h1>
+  <h2 style="margin-bottom:1rem">Page Not Found</h2>
+  <p style="color:var(--text-muted);max-width:400px;margin-bottom:2rem">
+    The page you're looking for doesn't exist. Head back to the dashboard to continue building.
+  </p>
+  <a href="{{ url_for('dashboard') }}" class="btn-primary-custom">
+    <i class="bi bi-house-fill me-2"></i>Back to Dashboard
+  </a>
+</div>
+{% endblock %}

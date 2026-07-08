@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Business Forge{% endblock %}
+{% block page_title %}Business Forge{% endblock %}
+
+{% block content %}
+<div class="tool-page-layout animate-fadeInUp">
+
+  <div class="tool-hero" style="--hero-color:#f59e0b">
+    <div class="tool-hero-icon"><i class="bi bi-briefcase-fill"></i></div>
+    <div class="tool-hero-text">
+      <h1>Business Forge <span class="hero-new-tag">New</span></h1>
+      <p>Generate a complete India-first business strategy: Revenue Model, Budget (₹), Target Market, Growth Strategy, Go-to-Market, USP, and Product-Market Fit assessment.</p>
+    </div>
+  </div>
+
+  <!-- Feature pills -->
+  <!-- <div class="forge-features-row mb-4">
+    <div class="forge-pill" style="--fp:#f59e0b"><i class="bi bi-currency-rupee"></i> Revenue Model</div>
+    <div class="forge-pill" style="--fp:#10b981"><i class="bi bi-wallet2"></i> Budget Estimation</div>
+    <div class="forge-pill" style="--fp:#6366f1"><i class="bi bi-bullseye"></i> Target Market</div>
+    <div class="forge-pill" style="--fp:#3b82f6"><i class="bi bi-graph-up-arrow"></i> Growth Strategy</div>
+    <div class="forge-pill" style="--fp:#ec4899"><i class="bi bi-rocket-takeoff"></i> Go-to-Market</div>
+    <div class="forge-pill" style="--fp:#8b5cf6"><i class="bi bi-gem"></i> USP</div>
+    <div class="forge-pill" style="--fp:#06b6d4"><i class="bi bi-bar-chart-line"></i> Market Fit</div>
+  </div> -->
+
+  <div class="row g-4">
+    <!-- Input -->
+    <div class="col-lg-5">
+      <div class="card-custom">
+        <div class="card-header-custom">
+          <div class="card-icon-wrap" style="--c:#f59e0b"><i class="bi bi-pencil-square"></i></div>
+          <div>
+            <h3 class="card-title-custom">Your Business Idea</h3>
+            <p class="card-subtitle-custom">India-focused analysis with ₹ estimates</p>
+          </div>
+        </div>
+        <div class="card-body-custom">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Startup / Business Description</label>
+            <textarea
+              id="forgeInput"
+              class="form-textarea-custom"
+              rows="9"
+              maxlength="4000"
+              placeholder="Describe your startup or business idea. Include:
+• What problem does it solve?
+• Who are your target customers?
+• How does it work (briefly)?
+• Any existing competitors in India?
+• Your target geography (Tier 1 / Tier 2 / Pan-India)?
+• Preferred business model (B2B / B2C / D2C)?
+
+The more context, the richer the business strategy."
+            ></textarea>
+            <div class="form-meta"><span id="forgeCharCount">0</span>/4000</div>
+          </div>
+
+          <button class="btn-primary-custom w-100 mt-4" id="forgeBtn" onclick="runBusinessForge()" style="--btn-color:#f59e0b">
+            <i class="bi bi-briefcase-fill me-2"></i>Forge Business Strategy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="col-lg-7">
+      <div class="empty-state-panel" id="forgeEmpty">
+        <div class="empty-icon"><i class="bi bi-briefcase"></i></div>
+        <h4>Business Strategy</h4>
+        <p>Describe your startup and click "Forge" to receive a complete India-first business strategy with revenue projections in ₹, GTM plan, and market fit analysis.</p>
+      </div>
+      <div class="loading-panel" id="forgeLoading" style="display:none">
+        <div class="loading-orb">
+          <div class="orb-ring ring-1"></div>
+          <div class="orb-ring ring-2"></div>
+          <div class="orb-core"><i class="bi bi-cpu-fill"></i></div>
+        </div>
+        <h4>Forging Strategy...</h4>
+        <p>Building your India-first business blueprint.</p>
+        <div class="loading-steps">
+          <div class="loading-step active">💰 Modeling revenue streams...</div>
+          <div class="loading-step">🎯 Analyzing Indian market...</div>
+          <div class="loading-step">🚀 Planning go-to-market...</div>
+          <div class="loading-step">📊 Assessing market fit...</div>
+        </div>
+      </div>
+      <div id="forgeResults" style="display:none">
+        <div class="card-custom">
+          <div class="card-header-custom">
+            <div class="card-icon-wrap" style="--c:#f59e0b"><i class="bi bi-briefcase-fill"></i></div>
+            <div>
+              <h3 class="card-title-custom">Business Strategy Report</h3>
+              <p class="card-subtitle-custom" id="forgeTimestamp"></p>
+            </div>
+            <button class="btn-icon ms-auto" onclick="copyResult('forgeContent')" title="Copy report">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+          <div class="card-body-custom result-body" id="forgeContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById("forgeInput").addEventListener("input", function() {
+    document.getElementById("forgeCharCount").textContent = this.value.length;
+  });
+
+  async function runBusinessForge() {
+    const idea = document.getElementById("forgeInput").value.trim();
+    if (!idea) { showToast("Please describe your business idea first.", "warning"); return; }
+
+    const btn = document.getElementById("forgeBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Forging...';
+    document.getElementById("forgeEmpty").style.display = "none";
+    document.getElementById("forgeResults").style.display = "none";
+    document.getElementById("forgeLoading").style.display = "flex";
+
+    // Animate loading steps
+    const steps = document.querySelectorAll("#forgeLoading .loading-step");
+    let si = 0;
+    const stepInt = setInterval(() => {
+      steps.forEach(s => s.classList.remove("active"));
+      if (si < steps.length) { steps[si].classList.add("active"); si++; }
+      else clearInterval(stepInt);
+    }, 1800);
+
+    try {
+      const res  = await fetch("/api/business-forge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea }),
+      });
+      const data = await res.json();
+      clearInterval(stepInt);
+      document.getElementById("forgeLoading").style.display = "none";
+      if (res.ok) {
+        document.getElementById("forgeContent").innerHTML = marked.parse(data.result);
+        document.getElementById("forgeTimestamp").textContent =
+          "Generated: " + new Date(data.timestamp).toLocaleString();
+        document.getElementById("forgeResults").style.display = "block";
+        showToast("Business strategy forged!", "success");
+      } else {
+        document.getElementById("forgeEmpty").style.display = "flex";
+        showToast(data.error || "Failed.", "error");
+      }
+    } catch (e) {
+      clearInterval(stepInt);
+      document.getElementById("forgeLoading").style.display = "none";
+      document.getElementById("forgeEmpty").style.display = "flex";
+      showToast("Network error.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-briefcase-fill me-2"></i>Forge Business Strategy';
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Workflow Generator{% endblock %}
+{% block page_title %}Workflow Generator{% endblock %}
+
+{% block content %}
+<div class="tool-page-layout animate-fadeInUp">
+
+  <div class="tool-hero" style="--hero-color:#3b82f6">
+    <div class="tool-hero-icon"><i class="bi bi-diagram-2-fill"></i></div>
+    <div class="tool-hero-text">
+      <h1>Workflow Generator</h1>
+      <p>Generate a visual workflow or pipeline with boxes, arrows, decision points, and timelines. Describe any process — product launch, customer journey, data pipeline, onboarding flow — and get a complete visual blueprint.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Input -->
+    <div class="col-lg-5">
+      <div class="card-custom">
+        <div class="card-header-custom">
+          <div class="card-icon-wrap" style="--c:#3b82f6"><i class="bi bi-pencil-square"></i></div>
+          <div>
+            <h3 class="card-title-custom">Describe Your Process</h3>
+            <p class="card-subtitle-custom">Product, workflow, pipeline, or journey</p>
+          </div>
+        </div>
+        <div class="card-body-custom">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Process / System Description</label>
+            <textarea
+              id="workflowInput"
+              class="form-textarea-custom"
+              rows="9"
+              maxlength="4000"
+              placeholder="Describe the process you want to visualize. Examples:
+• User onboarding flow for a fintech app
+• Order-to-delivery pipeline for an e-commerce platform
+• CI/CD pipeline for a SaaS product
+• Customer support ticket resolution process
+• Loan approval workflow for an NBFC"
+            ></textarea>
+            <div class="form-meta"><span id="workflowCharCount">0</span>/4000</div>
+          </div>
+
+          <div class="workflow-outputs mt-3">
+            <h6 class="mb-2"><i class="bi bi-check2-square me-2"></i>Output Includes:</h6>
+            <div class="option-checklist">
+              <label class="option-check"><input type="checkbox" checked disabled /> ASCII/Text Visual Diagram</label>
+              <label class="option-check"><input type="checkbox" checked disabled /> Phase-by-Phase Pipeline</label>
+              <label class="option-check"><input type="checkbox" checked disabled /> Decision Points (◆ diamonds)</label>
+              <label class="option-check"><input type="checkbox" checked disabled /> Data Flow (→ arrows)</label>
+              <label class="option-check"><input type="checkbox" checked disabled /> Automation Opportunities</label>
+              <label class="option-check"><input type="checkbox" checked disabled /> Bottlenecks &amp; KPIs</label>
+            </div>
+          </div>
+
+          <button class="btn-primary-custom w-100 mt-4" id="workflowBtn" onclick="generateWorkflow()" style="--btn-color:#3b82f6">
+            <i class="bi bi-diagram-2-fill me-2"></i>Generate Workflow
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="col-lg-7">
+      <div class="empty-state-panel" id="workflowEmpty">
+        <div class="empty-icon"><i class="bi bi-diagram-2"></i></div>
+        <h4>Workflow Diagram</h4>
+        <p>Describe any process and click "Generate" to receive a complete visual workflow with phases, decision points, arrows, data flows, automation opportunities, and KPIs.</p>
+      </div>
+      <div class="loading-panel" id="workflowLoading" style="display:none">
+        <div class="loading-orb">
+          <div class="orb-ring ring-1"></div>
+          <div class="orb-ring ring-2"></div>
+          <div class="orb-core"><i class="bi bi-cpu-fill"></i></div>
+        </div>
+        <h4>Building Workflow...</h4>
+        <p>Mapping your process into a visual pipeline.</p>
+      </div>
+      <div id="workflowResults" style="display:none">
+        <div class="card-custom">
+          <div class="card-header-custom">
+            <div class="card-icon-wrap" style="--c:#3b82f6"><i class="bi bi-diagram-2-fill"></i></div>
+            <div>
+              <h3 class="card-title-custom">Workflow Diagram</h3>
+              <p class="card-subtitle-custom" id="workflowTimestamp"></p>
+            </div>
+            <button class="btn-icon ms-auto" onclick="copyResult('workflowContent')" title="Copy">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+          <div class="card-body-custom result-body workflow-result" id="workflowContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById("workflowInput").addEventListener("input", function() {
+    document.getElementById("workflowCharCount").textContent = this.value.length;
+  });
+
+  async function generateWorkflow() {
+    const idea = document.getElementById("workflowInput").value.trim();
+    if (!idea) { showToast("Please describe your process first.", "warning"); return; }
+
+    const btn = document.getElementById("workflowBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generating...';
+    document.getElementById("workflowEmpty").style.display = "none";
+    document.getElementById("workflowResults").style.display = "none";
+    document.getElementById("workflowLoading").style.display = "flex";
+
+    try {
+      const res  = await fetch("/api/workflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea }),
+      });
+      const data = await res.json();
+      document.getElementById("workflowLoading").style.display = "none";
+      if (res.ok) {
+        document.getElementById("workflowContent").innerHTML = marked.parse(data.result);
+        document.getElementById("workflowTimestamp").textContent =
+          "Generated: " + new Date(data.timestamp).toLocaleString();
+        document.getElementById("workflowResults").style.display = "block";
+        showToast("Workflow generated!", "success");
+      } else {
+        document.getElementById("workflowEmpty").style.display = "flex";
+        showToast(data.error || "Generation failed.", "error");
+      }
+    } catch (e) {
+      document.getElementById("workflowLoading").style.display = "none";
+      document.getElementById("workflowEmpty").style.display = "flex";
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-diagram-2-fill me-2"></i>Generate Workflow';
+    }
+  }
+</script>
+{% endblock %}

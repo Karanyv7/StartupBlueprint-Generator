@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Pitch Builder{% endblock %}
+{% block page_title %}Pitch Builder{% endblock %}
+
+{% block content %}
+<div class="tool-page-layout animate-fadeInUp">
+
+  <div class="tool-hero" style="--hero-color:#ec4899">
+    <div class="tool-hero-icon"><i class="bi bi-megaphone-fill"></i></div>
+    <div class="tool-hero-text">
+      <h1>Pitch Builder</h1>
+      <p>Generate a compelling 1–2 minute investor pitch script and 8 investor FAQs — tailored for Indian accelerators, angel networks, and demo days.</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Input -->
+    <div class="col-lg-5">
+      <div class="card-custom">
+        <div class="card-header-custom">
+          <div class="card-icon-wrap" style="--c:#ec4899"><i class="bi bi-pencil-square"></i></div>
+          <div>
+            <h3 class="card-title-custom">Your Startup</h3>
+            <p class="card-subtitle-custom">The more detail, the better the pitch</p>
+          </div>
+        </div>
+        <div class="card-body-custom">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Startup Description</label>
+            <textarea
+              id="pitchInput"
+              class="form-textarea-custom"
+              rows="9"
+              maxlength="4000"
+              placeholder="Describe your startup. Include:
+• The problem you solve and who has it
+• Your solution and how it works
+• Target customers and market size
+• Business model / how you make money
+• Any traction, users, or revenue so far
+• What makes you different from competitors
+• Your team background
+
+More detail = more compelling pitch."
+            ></textarea>
+            <div class="form-meta"><span id="pitchCharCount">0</span>/4000</div>
+          </div>
+
+          <!-- What you'll get -->
+          <div class="pitch-outputs mt-3">
+            <h6 class="mb-2"><i class="bi bi-list-check me-2"></i>You'll Receive:</h6>
+            <div class="pitch-type-cards">
+              <div class="pitch-type-card" style="--ptc:#ec4899">
+                <div class="ptc-icon"><i class="bi bi-mic-fill"></i></div>
+                <div class="ptc-info">
+                  <div class="ptc-title">1–2 Min Pitch</div>
+                  <div class="ptc-desc">Full spoken script</div>
+                </div>
+              </div>
+              <div class="pitch-type-card" style="--ptc:#6366f1">
+                <div class="ptc-icon"><i class="bi bi-question-circle-fill"></i></div>
+                <div class="ptc-info">
+                  <div class="ptc-title">8 FAQs</div>
+                  <div class="ptc-desc">Investor Q&amp;A prep</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-primary-custom w-100 mt-4" id="pitchBtn" onclick="generatePitch()" style="--btn-color:#ec4899">
+            <i class="bi bi-megaphone-fill me-2"></i>Build My Pitch
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="col-lg-7">
+      <div class="empty-state-panel" id="pitchEmpty">
+        <div class="empty-icon"><i class="bi bi-mic"></i></div>
+        <h4>Your Pitch Package</h4>
+        <p>Describe your startup and click "Build" to get a ready-to-deliver 1–2 minute pitch script and 8 investor FAQ answers.</p>
+      </div>
+      <div class="loading-panel" id="pitchLoading" style="display:none">
+        <div class="loading-orb">
+          <div class="orb-ring ring-1"></div>
+          <div class="orb-ring ring-2"></div>
+          <div class="orb-core"><i class="bi bi-cpu-fill"></i></div>
+        </div>
+        <h4>Crafting Your Pitch...</h4>
+        <p>Writing your investor-ready pitch script.</p>
+      </div>
+      <div id="pitchResults" style="display:none">
+        <div class="card-custom">
+          <div class="card-header-custom">
+            <div class="card-icon-wrap" style="--c:#ec4899"><i class="bi bi-megaphone-fill"></i></div>
+            <div>
+              <h3 class="card-title-custom">Pitch Package</h3>
+              <p class="card-subtitle-custom" id="pitchTimestamp"></p>
+            </div>
+            <button class="btn-icon ms-auto" onclick="copyResult('pitchContent')" title="Copy">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+          <div class="card-body-custom result-body" id="pitchContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.getElementById("pitchInput").addEventListener("input", function() {
+    document.getElementById("pitchCharCount").textContent = this.value.length;
+  });
+
+  async function generatePitch() {
+    const idea = document.getElementById("pitchInput").value.trim();
+    if (!idea) { showToast("Please describe your startup first.", "warning"); return; }
+
+    const btn = document.getElementById("pitchBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Building...';
+    document.getElementById("pitchEmpty").style.display = "none";
+    document.getElementById("pitchResults").style.display = "none";
+    document.getElementById("pitchLoading").style.display = "flex";
+
+    try {
+      const res  = await fetch("/api/pitch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea }),
+      });
+      const data = await res.json();
+      document.getElementById("pitchLoading").style.display = "none";
+      if (res.ok) {
+        document.getElementById("pitchContent").innerHTML = marked.parse(data.result);
+        document.getElementById("pitchTimestamp").textContent =
+          "Generated: " + new Date(data.timestamp).toLocaleString();
+        document.getElementById("pitchResults").style.display = "block";
+        showToast("Pitch ready!", "success");
+      } else {
+        document.getElementById("pitchEmpty").style.display = "flex";
+        showToast(data.error || "Failed.", "error");
+      }
+    } catch (e) {
+      document.getElementById("pitchLoading").style.display = "none";
+      document.getElementById("pitchEmpty").style.display = "flex";
+      showToast("Network error.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-megaphone-fill me-2"></i>Build My Pitch';
+    }
+  }
+</script>
+{% endblock %}

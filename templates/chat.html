@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}AI Chat{% endblock %}
+{% block page_title %}AI Chat — Innovation Blueprint{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+
+  <!-- ═══ CHAT SIDEBAR ═══ -->
+  <aside class="chat-aside">
+    <div class="chat-aside-header">
+      <h3><i class="bi bi-chat-dots-fill me-2"></i>Sessions</h3>
+      <button class="btn-icon" id="newChatBtn" title="New chat">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+    </div>
+    <div class="chat-sessions" id="chatSessions">
+      <div class="session-item active">
+        <i class="bi bi-file-earmark-text me-2"></i>
+        <span>New Blueprint</span>
+      </div>
+    </div>
+    <div class="chat-aside-tips">
+      <h6><i class="bi bi-lightbulb me-1"></i>Try asking:</h6>
+      <button class="sample-prompt" onclick="useSamplePrompt(this)">An app that connects local farmers with urban consumers in India</button>
+      <button class="sample-prompt" onclick="useSamplePrompt(this)">AI-powered mental health chatbot for college students</button>
+      <button class="sample-prompt" onclick="useSamplePrompt(this)">Hyperlocal grocery delivery for Tier 2 cities</button>
+      <button class="sample-prompt" onclick="useSamplePrompt(this)">Subscription platform for regional language content</button>
+    </div>
+  </aside>
+
+  <!-- ═══ CHAT MAIN ═══ -->
+  <div class="chat-main">
+
+    <!-- Chat Header -->
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="agent-status-dot"></div>
+        <div>
+          <h2>Blueprint AI</h2>
+          <span class="chat-model-tag"><i class="bi bi-cpu me-1"></i>IBM watsonx.ai · Active</span>
+        </div>
+      </div>
+      <div class="chat-actions">
+        <button class="btn-icon" id="exportChatBtn" title="Export blueprint">
+          <i class="bi bi-download"></i>
+        </button>
+        <button class="btn-icon" id="clearChatBtn" title="Clear conversation">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages Area -->
+    <div class="chat-messages" id="chatMessages">
+      <div class="message message-ai welcome-message">
+        <div class="message-avatar ai-avatar"><i class="bi bi-cpu-fill"></i></div>
+        <div class="message-content">
+          <div class="message-bubble">
+            <p class="mb-2"><strong>👋 Hello! I'm Blueprint AI</strong>, your Innovation Architect powered by IBM watsonx.ai.</p>
+            <p class="mb-2">Share any idea and I'll generate a <strong>complete innovation blueprint</strong> with:</p>
+            <ul class="mb-2">
+              <li>🎯 Problem statement &amp; proposed solution</li>
+              <li>🛠️ Tech stack, architecture &amp; MVP plan</li>
+              <li>💰 Cost estimates in ₹ (Indian market)</li>
+              <li>📈 Development roadmap &amp; SWOT analysis</li>
+              <li>🏷️ Project name suggestions &amp; executive summary</li>
+            </ul>
+            <p class="mb-0 text-muted small">Press <kbd>Ctrl+Enter</kbd> to send ↵</p>
+          </div>
+          <div class="message-meta">Blueprint AI · Now</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typing Indicator -->
+    <div class="typing-indicator" id="typingIndicator" style="display:none">
+      <div class="message-avatar ai-avatar"><i class="bi bi-cpu-fill"></i></div>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+      <span class="typing-label">Generating your blueprint...</span>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+      <div class="chat-input-wrapper">
+        <textarea
+          id="chatInput"
+          class="chat-textarea"
+          placeholder="Describe your idea... e.g. 'An app that helps remote teams stay connected through virtual coffee chats'"
+          rows="3"
+          maxlength="4000"
+        ></textarea>
+        <div class="input-footer">
+          <span class="char-count"><span id="charCount">0</span>/4000</span>
+          <div class="input-actions">
+            <button class="btn-send" id="sendBtn" onclick="sendMessage()">
+              <i class="bi bi-send-fill me-1"></i>Generate Blueprint
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const chatMessages = document.getElementById("chatMessages");
+  const chatInput    = document.getElementById("chatInput");
+  const sendBtn      = document.getElementById("sendBtn");
+  const typingInd    = document.getElementById("typingIndicator");
+  const charCount    = document.getElementById("charCount");
+  let   msgCount     = 0;
+
+  // Auto-scroll to bottom
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Character counter
+  chatInput.addEventListener("input", () => {
+    charCount.textContent = chatInput.value.length;
+  });
+
+  // Send on Ctrl+Enter
+  chatInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  function useSamplePrompt(btn) {
+    chatInput.value = btn.textContent.trim();
+    charCount.textContent = chatInput.value.length;
+    chatInput.focus();
+  }
+
+  function escapeHtml(t) {
+    return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function addMessage(role, content, isMarkdown = false) {
+    msgCount++;
+    const now  = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    const isAI = role === "ai";
+    const div  = document.createElement("div");
+    div.className = `message ${isAI ? "message-ai" : "message-user"} animate-slideUp`;
+    div.id = `msg-${msgCount}`;
+
+    const bubble = isMarkdown ? marked.parse(content) : escapeHtml(content);
+    div.innerHTML = `
+      ${isAI ? `<div class="message-avatar ai-avatar"><i class="bi bi-cpu-fill"></i></div>` : ""}
+      <div class="message-content ${isAI ? "" : "ms-auto"}">
+        <div class="message-bubble ${isAI ? "bubble-ai" : "bubble-user"}">${bubble}</div>
+        <div class="message-meta ${isAI ? "" : "text-end"}">
+          ${isAI ? "Blueprint AI" : "You"} · ${now}
+          ${isAI ? `<button class="btn-copy-msg ms-2" onclick="copyMsg(${msgCount})" title="Copy"><i class="bi bi-copy"></i></button>` : ""}
+        </div>
+      </div>
+      ${!isAI ? `<div class="message-avatar user-avatar"><i class="bi bi-person-fill"></i></div>` : ""}
+    `;
+    chatMessages.appendChild(div);
+    scrollToBottom();
+    return msgCount;
+  }
+
+  function copyMsg(id) {
+    const el = document.querySelector(`#msg-${id} .message-bubble`);
+    if (el) navigator.clipboard.writeText(el.innerText).then(() => showToast("Copied!", "success"));
+  }
+
+  async function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg || sendBtn.disabled) return;
+
+    addMessage("user", msg, false);
+    chatInput.value = "";
+    charCount.textContent = "0";
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Generating...';
+    typingInd.style.display = "flex";
+    scrollToBottom();
+
+    try {
+      const res  = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+      });
+      const data = await res.json();
+      typingInd.style.display = "none";
+      addMessage("ai", res.ok ? data.reply : `❌ **Error:** ${data.error || "Something went wrong."}`, true);
+    } catch (err) {
+      typingInd.style.display = "none";
+      addMessage("ai", "❌ **Network error.** Please check your connection and try again.", true);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Generate Blueprint';
+      scrollToBottom();
+    }
+  }
+
+  // Clear chat — single button handler
+  document.getElementById("clearChatBtn").addEventListener("click", () => {
+    if (!confirm("Clear this conversation?")) return;
+    const welcome = chatMessages.querySelector(".welcome-message");
+    chatMessages.innerHTML = "";
+    if (welcome) chatMessages.appendChild(welcome);
+    msgCount = 0;
+    showToast("Conversation cleared", "info");
+  });
+
+  // New chat
+  document.getElementById("newChatBtn").addEventListener("click", () => {
+    document.getElementById("clearChatBtn").click();
+  });
+
+  // Export chat
+  document.getElementById("exportChatBtn").addEventListener("click", () => {
+    const msgs = chatMessages.querySelectorAll(".message-bubble");
+    let text = "# Innovation Blueprint Export\n\n";
+    msgs.forEach(m => { text += m.innerText + "\n\n---\n\n"; });
+    const a = Object.assign(document.createElement("a"), {
+      href: URL.createObjectURL(new Blob([text], { type: "text/plain" })),
+      download: "blueprint-export.md"
+    });
+    a.click();
+    showToast("Blueprint exported!", "success");
+  });
+</script>
+{% endblock %}
